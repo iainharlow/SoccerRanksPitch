@@ -1,0 +1,187 @@
+---
+title       : Soccer Ranks
+subtitle    : Smarter Rankings for Football Teams
+author      : Iain Harlow
+job         : Data Science Enthusiast
+logo        : profile_flat.jpg
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+---
+
+## Rankings
+
+#### Rankings in sports are important! They're important for the public and tournament organisers:
+
+- Teams need to be ordered in some way to produce balanced groups in competitions.
+- For example, in international soccer, you don't want 2 teams qualifying for the World Cup from a group containing Spain, France, Germany, England and Italy.
+- Especially if another group contains San Marino, Andorra, Gibraltar, Liechtenstein and the Faroe Islands.
+- Keeping qualification or early stages of a tournament balanced make it more likely that the best teams will reach the later stages: For example, Netherlands, Brazil, Germany and Argentina reaching the semi-finals of the last World Cup.
+
+#### They're important for the teams involved, too! 
+
+- A good ranking can mean a kinder draw and a better chance of progressing to the later stages of a tournament.
+- For example, Argentina were ranked high enough to be a top seed for the World Cup, and faced an easy group as a result (Nigeria, Bosnia and Iran).
+- Meanwhile England and Italy missed out on a top seeding, and were drawn together with Uruguay (another strong team). Both crashed out at the group stage! Similarly, Netherlands and Chile were drawn together with Spain.
+
+#### Fortunately, [FIFA have developed a ranking system](http://en.wikipedia.org/wiki/FIFA_World_Rankings), so that's probably all OK, right! 
+  
+  
+_____
+   
+
+(Spoiler alert: No. No, it really isn't.)
+
+---
+
+## The Problem(s)
+
+#### Well, the main problem can be summarised as: The ranking system is truly terrible. 
+
+- Teams *always* decrease their ranking points if they lose. So if San Marino lose 3-2 to Brazil in extra time, the ranking system thinks "San Marino are worse than we thought", unlike every single human who's heard of football.
+- There's no account of goal difference: Germany demolished Brazil 7-1 in the World Cup Semi-Final but for all the ranking system cares, it might as well have been 4-3.
+- Here's a good bit of built-in bias: The amount of points you get for beating a team depends on your confederation. Not your own strength, nor that of the opposition - your confederation. So a European team (UEFA) beating Australia 3-2 earn more points than an African team do for beating them 10-0.
+- Weightings are completely mishandled by Fifa and affect the maximum points you can receive, but not the minimum... so a highly ranked team could play a friendly against someone and be *guaranteed* to decrease in ranking, because the maximum points available are lower than their current average. In that situation (which happens all the time by the way), both the winning team and the losing team would decrease in ranking.
+- To emphasise this: If two teams from the top 5 played each other in a friendly right now, both teams would decrease in ranking **regardless of the result**. 
+
+#### There are plenty of other issues. It should be pretty obvious by now that such a ranking system doesn't always reward success fairly.
+
+_____
+
+There are alternatives, such as the [ELO](https://en.wikipedia.org/wiki/World_Football_Elo_Ratings) system, which solve some of the most egregious problems. But they still use some very arbitrary assumptions, which should bother you if you really want to know who the strongest teams are!
+
+---
+
+## A Solution
+
+#### So let's approach the problem a bit more scientifically. We want a ranking system that does the following:
+
+- Takes the evidence we have (results of previous matches) and converts them into some useful statistic.
+- By useful, we mean something predictive that relates to how strong a team is. A higher ranked team should be a favourite against a lower ranked one.
+- It should be fair: If a team does better than expected their ranking should rise, and vice-versa.
+
+#### Modelling goals scored/conceded, as a poisson process, is about the simplest approach we can take to fulfil these criteria (plus it's a fairly accurate).
+
+- Each team is modeled by two statistics, an attack value (related to the frequency they score) and a defence value (the frequency they concede). Along with two global parameters, one reflecting the overall rate of scoring and another correcting for the (considerable) advantage of playing at home.
+- We find the parameters that maximise the likelihood of the data we've observed. That minimises the subjectivity of our ranking (e.g. ELO still has pretty arbitrary formulae to account for opposition strength or home advantage, whereas this model will learn them for itself).
+
+#### Of course, smart people will always disagree on exactly how to calculate the ranking. How much importance should we attach to friendlies v competitive games? To games a week ago v those a year ago? So the Smart Soccer Ranking App not only calculates a ranking, it also lets you fine tune your own ranking.
+
+---
+
+## The App
+
+The app is available [here](http://iainharlow.shinyapps.io/SoccerRanks/), fully documented, and all set up to calculate rankings for 200+ international football teams. You can make various choices before calculating the ranking. More choices are being added, but one key example is how the date of a match should affect its importance. To illustrate, two different choices of date weightings you could make with the app are shown below (R code is long so it's hidden; you can see the Rmd file [here](http://github.com/iainharlow/SoccerRanksPitch)):
+
+
+```{r,echo=FALSE}
+
+startdate1 <- as.Date("2006-01-01")
+enddate1 <- as.Date("2014-11-20")
+halflife1 <- 36 # Half-life in months
+startdate2 <- as.Date("2006-01-01")
+enddate2 <- as.Date("2010-06-01")
+halflife2 <- 12 # Half-life in months
+
+```
+
+```{r,echo=FALSE, fig.width = 14, fig.height = 3.5, fig.align = 'center'}
+suppressWarnings(library(scales))
+suppressWarnings(library(ggplot2))
+suppressWarnings(library(grid))
+
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+
+  require(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+beta1 <- halflife1*(365/12)/log(2) # Convert to beta for exponential decay (days) 
+beta2 <- halflife2*(365/12)/log(2) # Convert to beta for exponential decay (days) 
+x<-seq(as.Date("2006-01-01"),as.Date("2014-11-20"),1)
+
+y1<-as.numeric(x>=startdate1&x<=enddate1)
+y1<-y1*(exp(-as.numeric(enddate1-x)/beta1)/(beta1))
+y1<-y1/max(y1)
+
+y2<-as.numeric(x>=startdate2&x<=enddate2)
+y2<-y2*(exp(-as.numeric(enddate2-x)/beta2)/(beta2))
+y2<-y2/max(y2)
+
+p1 <- ggplot(data = data.frame("x"=x,"y"=y1),
+       aes(x=x,y=y)) +
+       geom_line(colour = "blue",size = 1) +
+       geom_abline(intercept=0, slope=0) +
+       scale_y_continuous(limits=c(0,1),labels = percent) +
+       theme(axis.line = element_line(colour = "black", size = 0.5)) +
+       theme(axis.line.x = element_blank()) +
+       theme(axis.title.x = element_blank()) +
+       theme(axis.title.y = element_blank()) +
+       ylab("Importance in model") +
+       xlab("Date of match result") +
+       theme(axis.line.y = element_line(colour = "black", size = 0.5))
+p2 <- ggplot(data = data.frame("x"=x,"y"=y2),
+       aes(x=x,y=y)) +
+       geom_line(colour = "blue",size = 1) +
+       geom_abline(intercept=0, slope=0) +
+       scale_y_continuous(limits=c(0,1),labels = percent) +
+       theme(axis.line = element_line(colour = "black", size = 0.5)) +
+       theme(axis.line.x = element_blank()) +
+       theme(axis.title.x = element_blank()) +
+       theme(axis.title.y = element_blank()) +
+       theme(axis.line.y = element_line(colour = "black", size = 0.5))
+
+multiplot(p1,p2,cols=2)
+```
+
+On the left, we've chosen a long halflife for matches, so a game 3 years ago is worth 50% of one today. And we've included all results in the database (it currently spans from 1st Jan 2006 to 20 Nov 2014), which takes a little longer to run but is more stable/accurate. 
+On the right, we've used a shorter halflife (games lose half their importance every year), but also told the model only to include matches before June 2010, giving us a picture of the strength of teams going in to that year's World Cup. We can also set the importance of friendlies, or how much attention to pay to outliers, and each time we run it the app will produce an interactive table of international teams and their strengths. Head over and give it a try!
+
+
+
+
+

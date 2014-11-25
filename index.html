@@ -1,1 +1,190 @@
-1
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Soccer Ranks</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Soccer Ranks">
+  <meta name="author" content="Iain Harlow">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+<link rel=stylesheet href="./assets/css/slidify.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <aside class="gdbar">
+    <img width = '20px' src="assets/img/profile_flat.jpg">
+  </aside>
+  <hgroup class="auto-fadein">
+    <h1>Soccer Ranks</h1>
+    <h2>Smarter Rankings for Football Teams</h2>
+    <p>Iain Harlow<br/>Data Science Enthusiast</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Rankings</h2>
+  </hgroup>
+  <article data-timings="">
+    <h4>Rankings in sports are important! They&#39;re important for the public and tournament organisers:</h4>
+
+<ul>
+<li>Teams need to be ordered in some way to produce balanced groups in competitions.</li>
+<li>For example, in international soccer, you don&#39;t want 2 teams qualifying for the World Cup from a group containing Spain, France, Germany, England and Italy.</li>
+<li>Especially if another group contains San Marino, Andorra, Gibraltar, Liechtenstein and the Faroe Islands.</li>
+<li>Keeping qualification or early stages of a tournament balanced make it more likely that the best teams will reach the later stages: For example, Netherlands, Brazil, Germany and Argentina reaching the semi-finals of the last World Cup.</li>
+</ul>
+
+<h4>They&#39;re important for the teams involved, too!</h4>
+
+<ul>
+<li>A good ranking can mean a kinder draw and a better chance of progressing to the later stages of a tournament.</li>
+<li>For example, Argentina were ranked high enough to be a top seed for the World Cup, and faced an easy group as a result (Nigeria, Bosnia and Iran).</li>
+<li>Meanwhile England and Italy missed out on a top seeding, and were drawn together with Uruguay (another strong team). Both crashed out at the group stage! Similarly, Netherlands and Chile were drawn together with Spain.</li>
+</ul>
+
+<h4>Fortunately, <a href="http://en.wikipedia.org/wiki/FIFA_World_Rankings">FIFA have developed a ranking system</a>, so that&#39;s probably all OK, right!</h4>
+
+<hr>
+
+<p>(Spoiler alert: No. No, it really isn&#39;t.)</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-2" style="background:;">
+  <hgroup>
+    <h2>The Problem(s)</h2>
+  </hgroup>
+  <article data-timings="">
+    <h4>Well, the main problem can be summarised as: The ranking system is truly terrible.</h4>
+
+<ul>
+<li>Teams <em>always</em> decrease their ranking points if they lose. So if San Marino lose 3-2 to Brazil in extra time, the ranking system thinks &quot;San Marino are worse than we thought&quot;, unlike every single human who&#39;s heard of football.</li>
+<li>There&#39;s no account of goal difference: Germany demolished Brazil 7-1 in the World Cup Semi-Final but for all the ranking system cares, it might as well have been 4-3.</li>
+<li>Here&#39;s a good bit of built-in bias: The amount of points you get for beating a team depends on your confederation. Not your own strength, nor that of the opposition - your confederation. So a European team (UEFA) beating Australia 3-2 earn more points than an African team do for beating them 10-0.</li>
+<li>Weightings are completely mishandled by Fifa and affect the maximum points you can receive, but not the minimum... so a highly ranked team could play a friendly against someone and be <em>guaranteed</em> to decrease in ranking, because the maximum points available are lower than their current average. In that situation (which happens all the time by the way), both the winning team and the losing team would decrease in ranking.</li>
+<li>To emphasise this: If two teams from the top 5 played each other in a friendly right now, both teams would decrease in ranking <strong>regardless of the result</strong>. </li>
+</ul>
+
+<h4>There are plenty of other issues. It should be pretty obvious by now that such a ranking system doesn&#39;t always reward success fairly.</h4>
+
+<hr>
+
+<p>There are alternatives, such as the <a href="https://en.wikipedia.org/wiki/World_Football_Elo_Ratings">ELO</a> system, which solve some of the most egregious problems. But they still use some very arbitrary assumptions, which should bother you if you really want to know who the strongest teams are!</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-3" style="background:;">
+  <hgroup>
+    <h2>A Solution</h2>
+  </hgroup>
+  <article data-timings="">
+    <h4>So let&#39;s approach the problem a bit more scientifically. We want a ranking system that does the following:</h4>
+
+<ul>
+<li>Takes the evidence we have (results of previous matches) and converts them into some useful statistic.</li>
+<li>By useful, we mean something predictive that relates to how strong a team is. A higher ranked team should be a favourite against a lower ranked one.</li>
+<li>It should be fair: If a team does better than expected their ranking should rise, and vice-versa.</li>
+</ul>
+
+<h4>Modelling goals scored/conceded, as a poisson process, is about the simplest approach we can take to fulfil these criteria (plus it&#39;s a fairly accurate).</h4>
+
+<ul>
+<li>Each team is modeled by two statistics, an attack value (related to the frequency they score) and a defence value (the frequency they concede). Along with two global parameters, one reflecting the overall rate of scoring and another correcting for the (considerable) advantage of playing at home.</li>
+<li>We find the parameters that maximise the likelihood of the data we&#39;ve observed. That minimises the subjectivity of our ranking (e.g. ELO still has pretty arbitrary formulae to account for opposition strength or home advantage, whereas this model will learn them for itself).</li>
+</ul>
+
+<h4>Of course, smart people will always disagree on exactly how to calculate the ranking. How much importance should we attach to friendlies v competitive games? To games a week ago v those a year ago? So the Smart Soccer Ranking App not only calculates a ranking, it also lets you fine tune your own ranking.</h4>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-4" style="background:;">
+  <hgroup>
+    <h2>The App</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>The app is available <a href="http://iainharlow.shinyapps.io/SoccerRanks/">here</a>, fully documented, and all set up to calculate rankings for 200+ international football teams. You can make various choices before calculating the ranking. More choices are being added, but one key example is how the date of a match should affect its importance. To illustrate, two different choices of date weightings you could make with the app are shown below (R code is long so it&#39;s hidden; you can see the Rmd file <a href="http://github.com/iainharlow/SoccerRanksPitch">here</a>):</p>
+
+<p><img src="assets/fig/unnamed-chunk-2-1.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" style="display: block; margin: auto;" /></p>
+
+<p>On the left, we&#39;ve chosen a long halflife for matches, so a game 3 years ago is worth 50% of one today. And we&#39;ve included all results in the database (it currently spans from 1st Jan 2006 to 20 Nov 2014), which takes a little longer to run but is more stable/accurate. 
+On the right, we&#39;ve used a shorter halflife (games lose half their importance every year), but also told the model only to include matches before June 2014, giving us a picture of the strength of teams going in to the previous World Cup. We can also set the importance of friendlies, or how much attention to pay to outliers, and each time we run it the app will produce an interactive table of international teams and their strengths. Head over and give it a try!</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Rankings'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='The Problem(s)'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='A Solution'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='The App'>
+         4
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
